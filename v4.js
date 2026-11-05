@@ -3,6 +3,8 @@
 const $=id=>document.getElementById(id),F=window.FocoFood,R=window.FOCO_RECIPES;
 const allergyNames={leite:'Leite / lactose',gluten:'Glúten',ovos:'Ovos',amendoim:'Amendoim','frutos-casca':'Frutos de casca rija',soja:'Soja',sesamo:'Sésamo',aipo:'Aipo',peixe:'Peixe',crustaceos:'Crustáceos',moluscos:'Moluscos',mostarda:'Mostarda',tremoco:'Tremoço',sulfitos:'Sulfitos'};
 const goals={perder:'Perder gordura',manter:'Manutenção',ganhar:'Ganhar massa muscular'};
+let videos={},texts={};
+const originalDescriptions=new Map(R.map(r=>[r.id,r.description]));
 let ctx,profile,tab='today',week=0,step=1,session=null,online=false,dirty=false,syncTimer,returnFocus,syncChain=Promise.resolve();
 const E=s=>ctx.encode(s),byId=id=>R.find(r=>r.id===id);
 const safeLink=url=>{try{const u=new URL(url,location.href);return ['https:','http:'].includes(u.protocol)?E(u.href):''}catch(e){return ''}};
@@ -13,7 +15,7 @@ async function request(path,method='GET',body){
 }
 function note(){const el=$('syncStatus');if(el)el.textContent=session?(dirty?'Guardado aqui · sincronização pendente':'Guardado na tua conta'):'Guardado neste navegador';}
 function persist(){dirty=Boolean(session);ctx.state.syncPending=dirty;ctx.save();note();clearTimeout(syncTimer);if(session)syncTimer=setTimeout(()=>sync().catch(()=>{}),400);}
-function payload(){const s=ctx.state;return {profile:s.profileV4,plan:s.foodPlan,mealChecks:s.mealChecks||{},shoppingChecks:s.shoppingChecks||{},checks:s.checks,day:s.day,track:s.track,name:s.name};}
+function payload(){const s=ctx.state;return {accountId:session?.id,profile:s.profileV4,plan:s.foodPlan,mealChecks:s.mealChecks||{},shoppingChecks:s.shoppingChecks||{},checks:s.checks,day:s.day,track:s.track,name:s.name};}
 function sync(){
  if(!session||!ctx.state.profileV4)return Promise.resolve();
  const user=session.id;
@@ -101,17 +103,55 @@ function bindFood(){
  if($('repeatWeekOptions'))document.querySelector('[data-repeat-week]').onclick=()=>{$('repeatWeekOptions').innerHTML=[0,1,2].filter(w=>w!==week).map(w=>`<button class="btn light" data-copy-week="${w}">Repetir na semana ${w+1}</button>`).join(' ');};
 }
 function accountContent(){
- if(session){$('accountContent').innerHTML=`<p>Sessão iniciada: <b>${E(session.email)}</b></p><p class="tiny">O perfil, as refeições e o progresso ficam associados à tua conta.</p><button class="btn full" id="syncNow">Sincronizar agora</button><button class="btn light full" id="logoutAccount">Terminar sessão</button><p id="accountError" role="status"></p>`;$('syncNow').onclick=()=>sync().then(()=>$('accountError').textContent='Conta sincronizada.').catch(e=>$('accountError').textContent=e.message);$('logoutAccount').onclick=async()=>{try{await sync();await request('logout','POST',{});session=null;ctx.state.profileV4=null;ctx.state.foodPlan=null;ctx.state.mealChecks={};ctx.state.shoppingChecks={};ctx.state.checks={};ctx.state.name='';ctx.state.day=1;ctx.state.profileDone=false;ctx.state.userId=null;ctx.state.loggedIn=false;ctx.save();profile=null;note();close('accountDialog');ctx.screen('inicio');}catch(e){$('accountError').textContent=e.message;}};return;}
- $('accountContent').innerHTML=`<p>Guarda o teu perfil e continua noutro dispositivo.</p>${!online?'<p class="notice">As contas requerem o servidor da aplicação. Nesta pré-visualização estática podes continuar com os dados guardados neste navegador.</p>':''}<form id="accountForm"><label for="accountEmail">Email</label><input id="accountEmail" type="email" autocomplete="email" required maxlength="254"><label for="accountPassword">Palavra-passe</label><input id="accountPassword" type="password" minlength="1" maxlength="128" autocomplete="current-password" required><div class="row profile-actions"><button class="btn" type="submit">Entrar</button><button class="btn light" id="registerAccount" type="button">Criar conta</button></div><p id="accountError" class="form-error" role="alert"></p></form>`;
+ if(session){
+ $('accountContent').innerHTML=`<p>Sessão iniciada: <b>${E(session.email)}</b></p><p class="tiny">${session.has_access?'Tens acesso aos materiais.':'Os materiais requerem acesso ao desafio.'}</p><button class="btn full" id="syncNow">Sincronizar agora</button>${!session.email_verified?'<button class="btn light full" id="verifyEmail">Confirmar email</button>':''}${!session.has_access?'<button class="btn light full" id="testCheckout">Testar pagamento único · 24,90 €</button><p class="tiny">Modo de teste. Não cobra dinheiro real.</p>':''}${session.is_admin?'<button class="btn light full" id="manageContent">Gerir conteúdos e vídeos</button>':''}<button class="btn light full" id="logoutAccount">Terminar sessão</button><p id="accountError" role="status"></p>`;
+ $('syncNow').onclick=()=>sync().then(()=>$('accountError').textContent='Conta sincronizada.').catch(e=>$('accountError').textContent=e.message);
+ if($('verifyEmail'))$('verifyEmail').onclick=()=>emailRequest('verify',session.email).catch(e=>$('accountError').textContent=e.message);
+ if($('testCheckout'))$('testCheckout').onclick=async()=>{try{const data=await request('checkout','POST',{});const url=new URL(data.url);if(url.protocol!=='https:'||url.hostname!=='checkout.stripe.com')throw Error('Ligação de pagamento inválida.');location.assign(url.href);}catch(e){$('accountError').textContent=e.message;}};
+ if($('manageContent'))$('manageContent').onclick=adminContent;
+ $('logoutAccount').onclick=async()=>{try{await request('logout','POST',{});clearTimeout(syncTimer);session=null;window.FocoAccounts.transition(ctx.state,null,null);ctx.save();profile=null;$('adminNav').style.display='none';note();close('accountDialog');ctx.screen('inicio');}catch(e){$('accountError').textContent=e.message;}};return;}
+ $('accountContent').innerHTML=`<p>Guarda o teu perfil e continua noutro dispositivo.</p>${!online?'<p class="notice">As contas requerem o servidor da aplicação. Nesta pré-visualização estática podes continuar com os dados guardados neste navegador.</p>':''}<form id="accountForm"><label for="accountEmail">Email</label><input id="accountEmail" type="email" autocomplete="email" required maxlength="254"><label for="accountPassword">Palavra-passe</label><input id="accountPassword" type="password" minlength="1" maxlength="128" autocomplete="current-password" required><div class="row profile-actions"><button class="btn" type="submit">Entrar</button><button class="btn light" id="registerAccount" type="button">Criar conta</button></div><button class="text-button" id="forgotPassword" type="button">Esqueci-me da palavra-passe</button><p id="accountError" class="form-error" role="alert"></p></form>`;
  async function auth(mode){const form=$('accountForm');if(!form.reportValidity())return;const buttons=form.querySelectorAll('button');buttons.forEach(b=>b.disabled=true);try{
- const data=await request(mode,'POST',{email:$('accountEmail').value.trim(),password:$('accountPassword').value,name:ctx.state.name||''});session=data.user;online=true;ctx.state.accountOwner=session.id;
+ const guestState={...ctx.state};
+ const importGuest=!ctx.state.accountOwner&&Boolean(ctx.state.profileV4)&&confirm('Queres associar o perfil deste navegador à conta em que vais entrar?');
+ const data=await request(mode,'POST',{email:$('accountEmail').value.trim(),password:$('accountPassword').value,name:ctx.state.name||''});session=data.user;online=true;window.FocoAccounts.transition(ctx.state,session.id,null);profile=null;ctx.save();
  const saved=await request('state');
- if(saved.state){Object.assign(ctx.state,{...saved.state,userId:null,loggedIn:true});profile=ctx.state.profileV4;ctx.state.profileDone=Boolean(profile);ctx.save();}
- else{await sync();}note();close('accountDialog');ctx.screen(profile?'alimentacao':'inicio');if(!profile)openProfile();ctx.flash('Sessão iniciada.');
+ if(importGuest&&!saved.state)Object.assign(ctx.state,guestState);
+ window.FocoAccounts.transition(ctx.state,session.id,saved.state,importGuest&&!saved.state);profile=ctx.state.profileV4;ctx.save();
+ if(!saved.state&&profile)await sync();
+ $('adminNav').style.display=session.is_admin?'flex':'none';note();close('accountDialog');ctx.screen(profile?'alimentacao':'inicio');if(!profile)openProfile();ctx.flash('Sessão iniciada.');
  }catch(e){$('accountError').textContent=e.message;}finally{buttons.forEach(b=>b.disabled=false);}}
+ $('forgotPassword').onclick=()=>emailRequest('reset',$('accountEmail').value.trim()).catch(e=>$('accountError').textContent=e.message);
  $('accountForm').onsubmit=e=>{e.preventDefault();auth('login');};$('registerAccount').onclick=()=>auth('register');
 }
-async function restoreSession(){try{const data=await request('session');online=true;session=data.user||null;if(session){if(ctx.state.accountOwner===session.id&&ctx.state.syncPending&&ctx.state.profileV4){await sync();}else{const saved=await request('state');if(saved.state){Object.assign(ctx.state,saved.state);ctx.state.profileDone=Boolean(ctx.state.profileV4);profile=ctx.state.profileV4;ctx.save();}else if(ctx.state.profileV4){await sync();}}ctx.state.accountOwner=session.id;ctx.save();}note();}catch(e){online=false;note();}}
+async function loadContent(){try{const data=await request('content');videos=data.videos||{};texts=data.texts||{};for(const r of R){r.video=videos['recipe:'+r.id]||null;r.description=texts['recipe:'+r.id]||originalDescriptions.get(r.id);}}catch(e){}}
+async function restoreSession(){
+ try{
+  const data=await request('session');online=true;session=data.user||null;
+  if(session){
+   let pending=null;try{pending=JSON.parse(sessionStorage.getItem('foco_account_pending'));}catch(e){}
+   if(pending?.accountOwner===session.id&&pending.syncPending&&pending.profileV4){Object.assign(ctx.state,pending);profile=ctx.state.profileV4;await sync();}
+   else{const saved=await request('state');window.FocoAccounts.transition(ctx.state,session.id,saved.state);profile=ctx.state.profileV4;ctx.save();}
+   $('nameInput').value=ctx.state.name||'';$('trackSelect').value=ctx.state.track;
+  }
+  else if(ctx.state.accountOwner){window.FocoAccounts.transition(ctx.state,null,null);profile=null;ctx.save();}
+  $('adminNav').style.display=session?.is_admin?'flex':'none';note();
+ }catch(e){online=false;note();}
+ await loadContent();
+ const match=location.hash.match(/^#account\/(reset|verify)\/([\w-]+)$/);
+ if(match){history.replaceState(null,'',location.pathname);emailConfirmForm(match[1],match[2]);}
+}
+function emailConfirmForm(purpose,token){
+ $('accountContent').innerHTML=`<h3>${purpose==='reset'?'Definir nova palavra-passe':'Confirmar email'}</h3><form id="emailConfirmForm">${purpose==='reset'?'<label for="newPassword">Nova palavra-passe</label><input id="newPassword" type="password" minlength="10" maxlength="128" autocomplete="new-password" required>':''}<button class="btn" type="submit">Confirmar</button><p id="accountError" role="status"></p></form>`;
+ $('emailConfirmForm').onsubmit=async e=>{e.preventDefault();try{await request('email/confirm','POST',{purpose,token,password:$('newPassword')?.value});$('accountError').textContent='Pedido concluído. Podes iniciar sessão.';}catch(error){$('accountError').textContent=error.message;}};open('accountDialog');
+}
+async function emailRequest(purpose,email){const data=await request('email/request','POST',{purpose,email});$('accountError').textContent=data.message;}
+function adminContent(){
+ if(!session?.is_admin)return;
+ $('accountContent').innerHTML=`<h3>Gerir conteúdos e vídeos</h3><p class="tiny">Edita a descrição ou a nota do dia e liga apenas vídeos confirmados. Campos vazios recuperam o conteúdo original.</p><form id="videoForm"><label for="contentKey">Conteúdo</label><select id="contentKey">${R.map(r=>`<option value="recipe:${r.id}">${E(r.name)}</option>`).join('')}${Array.from({length:21},(_,i)=>`<option value="day:${i+1}">Treino · dia ${i+1}</option>`).join('')}</select><label for="contentText">Descrição / nota do dia</label><textarea id="contentText" maxlength="1000" rows="4"></textarea><label for="contentUrl">Ligação HTTPS</label><input id="contentUrl" type="url"><button class="btn" type="submit">Guardar</button><p id="accountError" role="status"></p></form>`;
+ const fill=()=>{$('contentUrl').value=videos[$('contentKey').value]||'';$('contentText').value=texts[$('contentKey').value]||'';};fill();$('contentKey').onchange=fill;
+ $('videoForm').onsubmit=async e=>{e.preventDefault();try{await request('admin/content','PUT',{key:$('contentKey').value,url:$('contentUrl').value.trim()});await request('admin/text','PUT',{key:$('contentKey').value,text:$('contentText').value});await loadContent();$('accountError').textContent='Conteúdo atualizado.';}catch(error){$('accountError').textContent=error.message;}};
+}
 function init(context){ctx=context;ctx.state.mealChecks??={};ctx.state.shoppingChecks??={};profile=ctx.state.profileV4;
  // Não enviar identificadores fictícios do login V3 para o servidor.
  ctx.state.userId=null;ctx.state.loggedIn=false;
@@ -123,5 +163,5 @@ function init(context){ctx=context;ctx.state.mealChecks??={};ctx.state.shoppingC
  document.addEventListener('keydown',e=>{const dialog=[...document.querySelectorAll('.modalback:not(.hidden)')].at(-1);if(!dialog)return;if(e.key==='Escape'){close(dialog.id);return;}if(e.key==='Tab'){const list=[...dialog.querySelectorAll('button,input,select,a[href],textarea')].filter(el=>!el.disabled&&el.getClientRects().length);if(!list.length)return;const first=list[0],last=list.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
  window.FocoV4.ready=restoreSession();
 }
-window.FocoV4={init,renderFood,openProfile,sync};
+window.FocoV4={init,renderFood,openProfile,sync,videoForDay:day=>videos['day:'+day]||'',textForDay:day=>texts['day:'+day]||''};
 })();
