@@ -2,13 +2,35 @@ import importlib
 import json
 from pathlib import Path
 import pytest
+import os
+import uuid
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
 @pytest.fixture
 def api(tmp_path,monkeypatch):
  monkeypatch.setenv('FOCO_DB',str(tmp_path/'test.db'))
+ admin = None
+ if os.environ.get('TEST_DATABASE_URL'):
+  url = make_url(os.environ['TEST_DATABASE_URL'])
+  schema = 'test_' + uuid.uuid4().hex
+  admin = create_engine(url)
+  with admin.begin() as conn:
+   conn.execute(text('CREATE SCHEMA ' + schema))
+  monkeypatch.setenv('DATABASE_URL', str(url.update_query_dict({'options': '-csearch_path=' + schema}).render_as_string(hide_password=False)))
+ else:
+  monkeypatch.delenv('DATABASE_URL', raising=False)
  import server_v4
  s=importlib.reload(server_v4);s.app.config.update(TESTING=True,SECRET_KEY='test-only')
- return s,s.app.test_client()
+ monkeypatch.setattr(s, 'ROOT', tmp_path)
+ (tmp_path/'private_materials').mkdir()
+ (tmp_path/'private_materials'/'guia.pdf').write_bytes(b'%PDF-1.4\n%%EOF')
+ yield s,s.app.test_client()
+ s.engine.dispose()
+ if admin:
+  with admin.begin() as conn:
+   conn.execute(text('DROP SCHEMA ' + schema + ' CASCADE'))
+  admin.dispose()
 
 def register(client,email='one@example.test'):
  response=client.post('/api/register',json={'email':email,'password':'testing-only-123','name':'Teste'})
