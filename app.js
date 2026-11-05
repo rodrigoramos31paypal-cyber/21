@@ -3,13 +3,16 @@
 const c=window.FOCO_CONTENT;const KEY='foco_21_v3';let state={screen:'inicio',day:1,track:'geral',checks:{},name:'',loggedIn:false,paid:true,email:'',userId:null,profileDone:false};
 try{const v=localStorage.getItem(KEY);if(v){state={...state,...JSON.parse(v)}}}catch(e){}
 const $=id=>document.getElementById(id),save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
-const encode=s=>String(s).replaceAll('&','&').replaceAll('<','<').replaceAll('>','>').replaceAll('"','"').replaceAll("'",'&#039;');
+const encode=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+function flash(message){$('toast').textContent=message;$('toast').classList.remove('hidden');clearTimeout(flash.timer);flash.timer=setTimeout(()=>$('toast').classList.add('hidden'),3500)}
 // API helpers
 async function api(path, method='GET', body) {
   const opts = {method, headers:{'Content-Type':'application/json'}};
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(path, opts);
-  return r.json();
+  const data = await r.json();
+  if(!r.ok)throw Error(data.error||'Serviço indisponível.');
+  return data;
 }
 async function loadProgress() {
   if (!state.userId) return;
@@ -24,55 +27,7 @@ async function saveProgress(day) {
   if (!state.userId) return;
   await api('/api/progress', 'POST', {user_id: state.userId, day, checks: state.checks[day], track: state.track});
 }
-function renderAlimentacao(){
-  const cals = state.calories || 1800;
-  const goal = state.goal || 'perder';
-  const goalText = {perder:'Perder peso', manter:'Manter', ganhar:'Ganhar massa'}[goal] || 'Perder peso';
-  const restrictions = state.restrictions || [];
-  $('calDisplay').textContent = cals + ' kcal / dia';
-  $('goalDisplay').textContent = goalText;
-  $('restDisplay').textContent = restrictions.length ? restrictions.join(', ') : 'Nenhuma';
-
-  const meals = [
-    {name:'Pequeno-almoço', base:'Aveia + fruta + iogurte natural', note:'Adaptar se lactose'},
-    {name:'Almoço', base:'Proteína magra + hidratos + vegetais', note:'Base do plano'},
-    {name:'Lanche', base:'Fruta + frutos secos ou iogurte', note:'Opcional'},
-    {name:'Jantar', base:'Proteína + vegetais + hidrato leve', note:'Mais leve'}
-  ];
-  $('mealList').innerHTML = meals.map((m,i)=>`
-    <div class="card" style="margin-bottom:14px;padding:18px 20px;border:1px solid #e4ebe3">
-      <div class="row" style="margin-bottom:6px">
-        <b style="font-size:16px">${m.name}</b>
-        <span class="tiny" style="background:#eff7e8;padding:4px 10px;border-radius:20px">${m.note}</span>
-      </div>
-      <p style="margin:0 0 12px;color:#3a4a40">${m.base}</p>
-      <label class="task" style="margin:0"><input type="checkbox" data-meal="${i}"/><span>Cumpri hoje</span></label>
-    </div>
-  `).join('');
-  const recipes = [
-    {name:'Aveia com fruta e iogurte', meal:'Pequeno-almoço', kcal:320},
-    {name:'Omelete de claras + pão integral', meal:'Pequeno-almoço', kcal:280},
-    {name:'Frango grelhado com arroz e salada', meal:'Almoço', kcal:450},
-    {name:'Salmão com batata-doce e brócolos', meal:'Almoço', kcal:480},
-    {name:'Iogurte natural + frutos secos', meal:'Lanche', kcal:220},
-    {name:'Peito de peru com legumes', meal:'Jantar', kcal:380}
-  ];
-  if($('recipesList')) $('recipesList').innerHTML = '<div class="eyebrow" style="margin-bottom:10px">RECEITAS SUGERIDAS (E-BOOK VOL.2)</div>' + recipes.map(r=>`<div class="card" style="margin-bottom:10px;padding:14px 16px"><b>${r.name}</b><br><span class="tiny">${r.meal} · ~${r.kcal} kcal</span></div>`).join('');
-  $('copyPlanBtn').onclick = () => {
-  const text = `Plano alimentar - ${state.goal || 'perder'}\nCalorias: ${state.calories || 1800} kcal\n\nPequeno-almoço: Aveia + fruta + iogurte\nAlmoço: Proteína + hidratos + vegetais\nLanche: Fruta + frutos secos\nJantar: Proteína + vegetais + hidrato leve`;
-  navigator.clipboard.writeText(text).then(() => flash('Plano copiado.')).catch(() => flash('Não foi possível copiar.'));
-};
-$('chooseMealsBtn').onclick = () => {
-  const options = [
-    'Aveia com fruta e iogurte',
-    'Omelete de claras + pão integral',
-    'Iogurte natural + frutos secos + fruta',
-    'Panquecas de aveia (sem lactose)'
-  ];
-  const choice = prompt('Escolhe uma opção de pequeno-almoço:\n\n' + options.map((o,i)=>`${i+1}. ${o}`).join('\n') + '\n\n(Em produção abre um modal com as receitas dos e-books)');
-  if (choice) flash('Opção registada. As receitas completas entram com os e-books.');
-};
-}
+function renderAlimentacao(){window.FocoV4.renderFood()}
 
 // Admin
 async function loadAdmin(){
@@ -83,7 +38,7 @@ async function loadAdmin(){
     const data = await api('/api/admin/users');
     const list = data.users || [];
     $('adminUsers').innerHTML = list.length
-      ? list.map(u => `<div style="padding:8px 0;border-bottom:1px solid var(--edge)"><b>${u.name||u.email}</b> · ${u.email}<br><span class="tiny">${u.track||'—'} · ${u.created_at?u.created_at.slice(0,10):''}</span></div>`).join('')
+      ? list.map(u => `<div style="padding:8px 0;border-bottom:1px solid var(--edge)"><b>${encode(u.name||u.email)}</b> · ${encode(u.email)}<br><span class="tiny">${u.track||'—'} · ${u.created_at?u.created_at.slice(0,10):''}</span></div>`).join('')
       : 'Nenhum utilizador ainda.';
   }catch(e){
     $('adminUsers').textContent = 'Erro ao carregar (servidor ativo?).';
@@ -104,7 +59,7 @@ function renderToday(){const d=state.day,datum=c.days[d-1],week=Math.ceil(d/7),p
 $('myName').textContent=state.name?`, ${state.name}`:'';
 $('todayDay').textContent=String(d).padStart(2,'0');$('todayWeek').textContent='SEMANA '+week;$('todayTitle').textContent=datum.name;$('todayFocus').textContent=datum.focus;$('todayMini').textContent=`${d} de 21 · ${daysDone()} feitos`;
 $('guideTitle').textContent = 'Hoje: ' + datum.name;
-$('guideText').textContent = datum.focus + '. Marca as 3 tarefas quando terminares.';
+$('guideText').textContent = datum.focus + ' Marca as 3 tarefas quando terminares.';
 const msgs = ['Foco no que controlas hoje.','Consistência vale mais do que perfeição.','Um dia de cada vez.','Já estás a construir o hábito.'];
 $('jpMessage').textContent = '“' + msgs[d % msgs.length] + '” — João Pedro';
 if(d===21){ $('guideText').textContent = 'Avaliação final. Fizeste ' + daysDone() + ' dias completos. Marca as tarefas e vê o resumo.'; }
@@ -116,7 +71,7 @@ $('dayImage').src=`assets/DIA_${String(d).padStart(2,'0')}.png`;$('dayImage').al
 const videourl=c.videoUrls[d]||'';const videoBtn=$('videoAction');videoBtn.textContent=videourl?'▶ Ver vídeo de hoje':'Em breve';videoBtn.disabled=false;videoBtn.onclick=()=>{if(videourl){window.open(videourl,'_blank','noopener,noreferrer')}else flash('Este vídeo será ligado depois das gravações.')};
 const taskNames=kind==='check'?['Fiz o check-in e a reflexão','Organizei as refeições','Defini o próximo objetivo']:['Completei o movimento de hoje','Preparei / organizei a alimentação','Cumpri o objetivo de foco'];
 $('tasks').innerHTML=taskNames.map((label,i)=>`<label class="task"><input type="checkbox" data-task="${i}" ${record(d)[i]?'checked':''}/><span>${encode(label)}</span></label>`).join('');
-$('tasks').querySelectorAll('input[data-task]').forEach(input=>input.addEventListener('change',async ()=>{const a=[...record(d)];a[+input.dataset.task]=input.checked;state.checks[d]=a;save();await saveProgress(d);renderToday();flash(a.every(Boolean)?'Dia fechado. Continuas.':'Marcado.'); if(a.every(Boolean)){ document.body.classList.add('day-complete'); setTimeout(()=>document.body.classList.remove('day-complete'),1200); } }));
+$('tasks').querySelectorAll('input[data-task]').forEach(input=>input.addEventListener('change',async ()=>{const a=[...record(d)];a[+input.dataset.task]=input.checked;state.checks[d]=a;save();try{await window.FocoV4.sync()}catch(e){}renderToday();flash(a.every(Boolean)?'Dia fechado. Continuas.':'Marcado.'); if(a.every(Boolean)){ document.body.classList.add('day-complete'); setTimeout(()=>document.body.classList.remove('day-complete'),1200); } }));
 $('trackSelect').value=state.track;
 const checkDays = [7,14,21];
 const banner = document.getElementById('checkinBanner');
@@ -127,76 +82,24 @@ function renderPlan(){const done=daysDone();$('planComplete').textContent=`${don
 $('weeks').innerHTML=Array.from({length:3},(_,wi)=>{let d0=wi*7+1;return `<div class="week"><div class="row"><h3>Semana ${wi+1}</h3><span class="tiny">Dias ${d0}–${d0+6}</span></div><div class="days">${Array.from({length:7},(_,j)=>{let d=d0+j;return `<button class="daychip ${d===state.day?'selected':''} ${allDone(d)?'completed':''}" data-goday="${d}" title="Dia ${d} · ${encode(c.days[d-1].name)}" aria-label="Abrir dia ${d}">${d}</button>`}).join('')}</div><p class="weekfoot">${['Aprender a começar','Repetir com qualidade','Consolidar a rotina'][wi]}</p></div>`}).join('');
 $('weeks').querySelectorAll('[data-goday]').forEach(btn=>btn.onclick=()=>{state.day=+btn.dataset.goday;save();screen('hoje')});
 }
-function setTrack(v){state.track=v;save();renderToday();renderPlan();flash('Percurso atualizado.')}
+function setTrack(v){state.track=v;save();window.FocoV4.sync().catch(()=>{});renderToday();renderPlan();flash('Percurso atualizado.')}
 function openModal(){document.getElementById('modal').classList.remove('hidden')}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
 function openLogin(){$('loginModal').classList.remove('hidden')}
 function closeLogin(){$('loginModal').classList.add('hidden')}
-function openOnboard(){$('onboardModal').classList.remove('hidden')}
+function openOnboard(){window.FocoV4.openProfile()}
 function closeOnboard(){$('onboardModal').classList.add('hidden')}
-let onb = {gender:'',place:'',age:null,height:null,weight:null,goal:'perder',restrictions:[]};
-function calcTDEE(g,age,h,w,goal){
-  // Mifflin-St Jeor simplified
-  let bmr = g==='m' ? 10*w + 6.25*h - 5*age + 5 : 10*w + 6.25*h - 5*age - 161;
-  let tdee = Math.round(bmr * 1.4); // sedentary-light activity
-  if(goal==='perder') tdee -= 400;
-  if(goal==='ganhar') tdee += 300;
-  return Math.max(1400, tdee);
-}
-function closePay(){$('payModal').classList.add('hidden')}
 function wire(){document.querySelectorAll('[data-screen]').forEach(btn=>btn.onclick=()=>screen(btn.dataset.screen));
 $('startDemo').onclick=()=>screen('hoje');
 $('openDemo2').onclick=()=>screen('hoje');
 $('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
 $('prevDay').onclick=()=>{state.day=Math.max(1,state.day-1);save();renderToday()};$('nextDay').onclick=()=>{state.day=Math.min(21,state.day+1);save();renderToday()};
 $('trackSelect').onchange=e=>setTrack(e.target.value);$('planTrack').onchange=e=>setTrack(e.target.value);
-$('nameInput').value=state.name;$('nameInput').addEventListener('input',e=>{state.name=e.target.value.trim().slice(0,28);save();$('myName').textContent=state.name?`, ${state.name}`:''});
+$('nameInput').value=state.name;$('nameInput').addEventListener('input',e=>{state.name=e.target.value.trim().slice(0,28);if(state.profileV4&&state.name)state.profileV4.name=state.name;save();window.FocoV4.sync().catch(()=>{});$('myName').textContent=state.name?`, ${state.name}`:''});
 $('restart').onclick=()=>{if(confirm('Reiniciar o teu progresso?')){state.checks={};state.day=1;save();renderPlan();flash('Progresso reiniciado.')}};
 $('demoCheck').onclick=()=>{state.checks[1]=[true,true,true];state.day=1;save();renderToday();flash('Exemplo: Dia 1 marcado como concluído.')};
-// Onboarding
-document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{onb.gender=b.dataset.g;document.querySelectorAll('[data-g]').forEach(x=>x.classList.remove('active'));b.classList.add('active')});
-document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{onb.place=b.dataset.t;document.querySelectorAll('[data-t]').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.track=onb.place==='casa'?'casa':'geral';});
-$('onbNext1').onclick=()=>{if(!onb.gender||!onb.place){flash('Escolhe género e local de treino');return;}$('onbStep1').classList.add('hidden');$('onbStep2').classList.remove('hidden')};
-$('onbNext2').onclick=()=>{
-  onb.age=+$('onbAge').value||28;
-  onb.height=+$('onbHeight').value||170;
-  onb.weight=+$('onbWeight').value||70;
-  onb.goal=$('onbGoal').value||'perder';
-  const cals=calcTDEE(onb.gender||'m',onb.age,onb.height,onb.weight,onb.goal);
-  $('tdeeResult').textContent=`Sugestão de calorias diárias: ${cals} kcal (orientação geral).`;
-  $('onbStep2').classList.add('hidden');
-  $('onbStep3').classList.remove('hidden');
-};
-$('onbFinish').onclick=()=>{
-  onb.restrictions=[...document.querySelectorAll('#onbStep3 input:checked')].map(i=>i.value);
-  state.calories = calcTDEE(onb.gender||'m', onb.age||28, onb.height||170, onb.weight||70, onb.goal||'perder');
-  state.goal = onb.goal || 'perder';
-  state.restrictions = onb.restrictions;
-  state.track=onb.place==='casa'?'casa':'geral';
-  state.profileDone=true;
-  save();
-  closeOnboard();
-  flash('Pronto. O teu plano está adaptado.');
-  screen('hoje');
-};
-async function doLogin(){
-  const email=$('loginEmail').value.trim()||'demo@teste.pt';
-  const pass=$('loginPass').value||'1234';
-  flash('A entrar...');
-  // Bypass API for demo — go straight to onboarding
-  state.loggedIn=true;
-  state.email=email;
-  state.name=email.split('@')[0];
-  state.userId=1;
-  state.paid=true;
-  state.profileDone=false;
-  save();
-  closeLogin();
-  openOnboard();
-}
-$('loginSubmit').onclick = doLogin;
-$('loginForm').onsubmit = e => { e.preventDefault(); doLogin(); };
-$('logoutBtn') && ($('logoutBtn').onclick=()=>{state.loggedIn=false;state.paid=false;save();screen('inicio');flash('Sessão terminada.');});
+$('priceButton').onclick=openModal;$('modalClose').onclick=closeModal;$('modalOk').onclick=()=>{closeModal();flash('Pagamento ainda não ativo.');};
+window.FocoV4.init({state,save,screen,flash,encode,renderToday,renderPlan});
 // Pay
 $('subBtn') && ($('subBtn').onclick=()=>{flash('Subscrição simulada. Em produção liga ao Stripe.');$('offerModal').classList.add('hidden');});
   const adminRefresh=$('adminRefresh');if(adminRefresh)adminRefresh.onclick=loadAdmin;
@@ -208,23 +111,24 @@ $('subBtn') && ($('subBtn').onclick=()=>{flash('Subscrição simulada. Em produ�
 // Theme
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme', t);
-  localStorage.setItem('foco_theme', t);
+  try{localStorage.setItem('foco_theme', t)}catch(e){}
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.content = t === 'dark' ? '#0f1614' : '#101816';
   const btn = document.getElementById('themeToggle');
   if(btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
 }
 function initTheme(){
-  const saved = localStorage.getItem('foco_theme') || 'light';
+  let saved='light';try{saved=localStorage.getItem('foco_theme')||'light'}catch(e){}
   applyTheme(saved);
   const btn = document.getElementById('themeToggle');
   if(btn) btn.onclick = () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
 }
 
-window.addEventListener('DOMContentLoaded',()=>{
+window.addEventListener('DOMContentLoaded',async()=>{
   wire();
   initTheme();
-  if(!state.profileDone) openOnboard();
+  await window.FocoV4.ready;
   screen(state.profileDone ? 'hoje' : 'inicio');
+  if(!state.profileV4) openOnboard();
 });
 })();
