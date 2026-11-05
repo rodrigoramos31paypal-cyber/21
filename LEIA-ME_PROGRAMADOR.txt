@@ -1,0 +1,53 @@
+21 DIAS DE FOCO — VERSÃO PARA O PROGRAMADOR
+Data: 5 de novembro de 2026
+Pasta: 21dias-v3/
+
+ESTE É O PROTÓTIPO FUNCIONAL MAIS RECENTE.
+Contém o design, fluxo, onboarding, alimentação, modo escuro e estrutura de admin.
+
+FICHEIROS PRINCIPAIS
+- index.html          → estrutura da app (landing, dia, plano, alimentação, admin)
+- estilos.css         → design (preto/verde/branco + modo escuro)
+- app.js              → lógica de navegação, onboarding, progresso, tema, admin
+- conteudos.js        → dias, exercícios dos 3 percursos, textos
+- server.py           → servidor Flask + SQLite (apenas para testes locais)
+- assets/             → foto João Pedro, 21 cartões diários, 3 PDFs, ícones
+- manifest.webmanifest → PWA básico
+- foco.db             → base de dados de teste (pode ser apagada)
+
+COMO TESTAR LOCALMENTE
+1. pip install flask flask-cors
+2. python3 server.py
+3. Abrir http://localhost:8080
+4. Para admin: adicionar ?admin=1 ao URL ou clique direito no logo “21”
+
+O QUE JÁ ESTÁ FEITO
+- Landing page completa
+- Navegação mobile (barra inferior)
+- Ecrã “O meu dia” (cartão, treino, 3 checkboxes, progresso)
+- Ecrã “O meu plano” (calendário 21 dias + PDFs)
+- Onboarding em 3 passos (género/local, dados+TDEE, restrições)
+- Área de Alimentação
+- Modo escuro (toggle no header, guardado no browser)
+- Link WhatsApp
+- Estrutura de painel Admin (estatísticas + lista de utilizadores)
+- Backend de teste (registo, login, progresso, perfil)
+
+O QUE FALTA PARA PRODUÇÃO (TUA RESPONSABILIDADE)
+- Autenticação real + sessão segura
+- Pagamento Stripe (24,90 €) + webhook
+- Base de dados de produção (PostgreSQL recomendado)
+- Painel de admin completo e protegido
+- PDFs e vídeos privados (links temporários)
+- Proteção de rotas
+- Política de acesso após o dia 21
+- Deploy (HTTPS obrigatório)
+
+NOTAS IMPORTANTES
+- Português de Portugal
+- Preço: 24,90 € pagamento único
+- Não inventar exercícios, receitas ou vídeos
+- Mobile-first
+- Os materiais oficiais estão em assets/ e no ZIP original KIT_IA_21_DIAS_DE_FOCO.zip
+
+Documentação completa na pasta docs-programador/ (enviada em separado ou junto).
