@@ -101,8 +101,8 @@ def rate_limit():
     bucket = digest(request.remote_addr or 'local')
     window = int(time.time()) // 60
     with get_db() as conn:
-        conn.execute('DELETE FROM auth_limits WHERE window<?', (window - 1,))
-        row = conn.execute("INSERT INTO auth_limits(bucket,window,hits) VALUES(?,?,1) ON CONFLICT(bucket) DO UPDATE SET hits=CASE WHEN auth_limits.window=excluded.window THEN auth_limits.hits+1 ELSE 1 END,window=excluded.window RETURNING hits", (bucket, window)).fetchone()
+        conn.execute('DELETE FROM auth_limits WHERE "window"<?', (window - 1,))
+        row = conn.execute('INSERT INTO auth_limits(bucket,"window",hits) VALUES(?,?,1) ON CONFLICT(bucket) DO UPDATE SET hits=CASE WHEN auth_limits."window"=excluded."window" THEN auth_limits.hits+1 ELSE 1 END,"window"=excluded."window" RETURNING hits', (bucket, window)).fetchone()
     return row['hits'] > 20
 
 def credentials(registering=False):

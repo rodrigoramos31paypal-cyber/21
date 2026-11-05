@@ -44,7 +44,7 @@ def migrate(engine):
         'CREATE TABLE IF NOT EXISTS progress(user_id INTEGER REFERENCES users(id),day INTEGER,checks TEXT,PRIMARY KEY(user_id,day))',
         'CREATE TABLE IF NOT EXISTS account_state(user_id INTEGER PRIMARY KEY REFERENCES users(id),data TEXT NOT NULL,updated_at TEXT NOT NULL)',
         'CREATE TABLE IF NOT EXISTS auth_sessions(token TEXT PRIMARY KEY,user_id INTEGER REFERENCES users(id),expires BIGINT NOT NULL)',
-        'CREATE TABLE IF NOT EXISTS auth_limits(bucket TEXT PRIMARY KEY,window BIGINT NOT NULL,hits INTEGER NOT NULL)',
+        'CREATE TABLE IF NOT EXISTS auth_limits(bucket TEXT PRIMARY KEY,"window" BIGINT NOT NULL,hits INTEGER NOT NULL)',
         'CREATE TABLE IF NOT EXISTS access_grants(user_id INTEGER PRIMARY KEY REFERENCES users(id),source TEXT NOT NULL)',
         'CREATE TABLE IF NOT EXISTS administrators(user_id INTEGER PRIMARY KEY REFERENCES users(id))',
         'CREATE TABLE IF NOT EXISTS content_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL)',
