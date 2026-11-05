@@ -1,113 +1,201 @@
-<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#101816"><meta name="description" content="21 Dias de Foco: acompanhamento diário, treinos e receitas com João Pedro Mendes."><title>21 Dias de Foco | João Pedro Mendes</title><link rel="stylesheet" href="estilos.css"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="assets/favicon.svg" type="image/svg+xml"></head><body>
-<header><a class="brand" href="#inicio" data-screen="inicio"><span class="logomark">21</span><span class="brandtext"><b>DIAS DE FOCO<span style="color:#6b9370">.</span></b><small>BY JOÃO PEDRO MENDES</small></span></a><nav class="desktop-nav" aria-label="Navegação"><button class="navbtn active" data-screen="inicio">Início</button><button class="navbtn" data-screen="hoje">O meu dia</button><button class="navbtn" data-screen="plano">O meu plano</button></nav><button id="themeToggle" class="theme-toggle" aria-label="Modo escuro">🌙</button><span class="headbadge">V3 · SERVIDOR</span></header>
-<main>
-<section class="scene active" id="screen-inicio"><div class="hero"><div class="copy"><div class="eyebrow">21 DIAS PARA VOLTARES A TI</div><h1>O teu foco.<br><em>Todos os dias.</em></h1><p>Um plano claro. Treinos adaptados. Alimentação prática. Acompanhamento real. Durante 21 dias, não tens de adivinhar o que fazer a seguir.</p><div class="gap12" style="flex-wrap:wrap"><button class="btn lime" id="startDemo">Explorar o meu dia ↗</button><span class="priceTag"><b>24,90 €</b><small>Pagamento único<br>Programa de 21 dias*</small></span></div><p class="tiny" style="font-size:11px;margin:14px 0 0;color:#99a89a">* Condições de acesso após o desafio por definir antes do lançamento.</p></div><div class="portrait"><span class="personbadge">João Pedro Mendes<small>Personal trainer · LEAP-FITNESS STUDIO</small></span></div></div><div class="features"><div class="feature"><i>◎</i><div><h3>Treino do dia</h3><p>Ginásio, pernas/glúteos ou casa, à tua medida.</p></div></div><div class="feature"><i>✓</i><div><h3>Marca o que cumpriste</h3><p>Checklist simples e evolução de 21 dias.</p></div></div><div class="feature"><i>▣</i><div><h3>Tudo no mesmo sítio</h3><p>Receitas, guias, vídeos e comunidade.</p></div></div></div>
-<div class="grid2" style="margin-top:25px"><div class="card pad"><div class="eyebrow">UMA NOVA FORMA DE PARTICIPAR</div><h2 style="margin:12px 0">Menos PDFs.<br>Mais ação.</h2><p class="lead" style="font-size:14px">Abres a plataforma, vês o que tens para fazer, fazes o treino, e marcas o dia como concluído. Sem complicações.</p><div class="sep"></div><div class="row"><b>Vê a plataforma por dentro</b><button id="openDemo2" class="btn light">Ver demonstração →</button></div></div><div class="card pad" style="background:#e6f2df"><div class="eyebrow">O QUE RECEBES</div><h3 style="margin:13px 0">Tudo incluído, sem mensalidades</h3><p style="color:#59705f">Treinos estruturados · Guias · Listas de compras · Receitas · Comunidade · Check-ins · Lives</p><button class="btn" id="priceButton" style="margin-top:20px">Como faço a inscrição?</button><p class="tiny" style="margin-top:12px">Pagamento ainda não ativo. Esta é uma demonstração.</p></div></div></section>
-<section class="scene" id="screen-hoje"><div class="part-top"><div><div class="eyebrow">A TUA EXPERIÊNCIA</div><h2>Olá<span id="myName"></span>. Bem-vindo de volta.</h2><p>O importante não é a perfeição. É continuares.</p></div><div class="progressWrap"><div class="progressDonut" id="todayProgress" style="--p:0"><span id="todayProgressNum">0/3</span></div><small id="todayStats">0 dias completos de 21</small></div></div>
-<div class="grid2"><div class="stack"><div class="todayhead"><div class="eyebrow" id="todayWeek">SEMANA 1</div><h2>DIA <span id="todayDay">01</span><br><span id="todayTitle">Treino A</span></h2><p id="todayFocus">Começa com controlo.</p>
-<div id="dayGuide" style="margin-top:14px;padding:12px 14px;background:#eff7e8;border-radius:12px;font-size:14px"><b id="guideTitle">Hoje</b><br><span id="guideText">Marca as 3 tarefas quando terminares.</span></div>
-<a href="https://wa.me/351912478768?text=Ol%C3%A1%2C%20tenho%20uma%20d%C3%BAvida%20sobre%20o%2021%20Dias%20de%20Foco" target="_blank" rel="noopener" class="btn" style="display:flex;margin:16px 0;background:#25D366;color:#fff">💬 Dúvidas no WhatsApp</a>
-<div class="todaynav"><button id="prevDay" class="round" aria-label="Dia anterior">‹</button><div class="daynum" id="todayMini">1 de 21</div><button id="nextDay" class="round" aria-label="Dia seguinte">›</button></div></div>
-<div class="card workoutCard"><div class="row"><span class="chip">O TEU TREINO</span><span class="tiny">DEMONSTRAÇÃO</span></div><h3 style="margin-top:14px" id="workoutTitle">Treino A</h3><p class="sub" id="workoutSubtitle">Força geral</p><div class="videoSpace"><div class="playicon">▶</div><b>Vídeo orientado pelo João Pedro</b><small>Os vídeos serão ligados após as gravações.</small></div><button id="videoAction" class="btn full" style="margin:14px 0">Vídeo a adicionar</button><div class="miniheading">EXERCÍCIOS DA SESSÃO</div><div id="exerciseList"></div><div class="note"><span>ⓘ</span><p>Os exercícios são os do plano revisto. A demonstração técnica em vídeo ainda vai ser gravada.</p></div></div>
-<div class="card pad tasks"><div class="row"><h3>Fechar o dia</h3><span class="chip">3 passos</span></div><p class="tiny" style="margin-top:7px">Marca à medida que fazes. Fica guardado neste navegador.</p><div id="tasks"></div><div class="note">✓ A tua evolução não é partilhada com ninguém nesta demonstração.</div></div></div>
-<div class="stack"><div class="card pad"><div class="row"><h3>O teu percurso</h3><span class="chip">PERSONALIZAR</span></div><p class="tiny" style="margin:8px 0 16px">Escolhe conforme o teu objetivo e equipamento, não conforme o sexo.</p><label for="trackSelect" class="field">PLANO DE TREINO</label><select id="trackSelect"><option value="geral">Força Geral · Ginásio</option><option value="gluteos">Pernas e Glúteos · Ginásio</option><option value="casa">Treinar em Casa</option></select><label for="nameInput" class="field" style="display:block;margin-top:15px">O TEU PRIMEIRO NOME (OPCIONAL)</label><input id="nameInput" type="text" maxlength="28" placeholder="Como te chamamos?"></div>
-<div class="card pad"><div class="row"><h3>Cartão do dia</h3><span class="chip">WHATSAPP</span></div><p class="tiny" style="margin:9px 0 14px">É esta imagem que vais receber diariamente no grupo.</p><img id="dayImage" class="cardimg" loading="lazy" src="assets/DIA_01.png" alt="Cartão do dia 1"></div>
-<div class="card pad" style="background:#e7f1e2"><span class="eyebrow">DICA DO JOÃO PEDRO</span><h3 style="margin:10px 0">Não precisas de fazer tudo perfeito.</h3><p style="color:#60755f;font-size:13px;line-height:1.7">Treina com boa técnica, prepara uma refeição com antecedência e marca uma pequena vitória. É assim que a consistência começa.</p></div></div></div></section>
-<section class="scene" id="screen-plano"><div class="sectionhead"><div><div class="eyebrow">O TEU PERCURSO</div><h2 style="margin-top:9px">O meu plano</h2><p>Um calendário para continuares, dia após dia.</p></div><span class="chip" id="planPercent">0%</span></div>
-<div class="card pad" style="margin-bottom:20px"><div class="row" style="align-items:center"><div><div class="miniheading" style="margin-bottom:4px">O TEU PROGRESSO</div><h3 id="planComplete">0/21 dias concluídos</h3></div><button class="btn light" id="restart">Reiniciar teste</button></div><div class="sep"></div><div class="calweeks" id="weeks"></div><div class="note">Seleciona qualquer dia para veres o respetivo treino. No lançamento, o desbloqueio diário será automático.</div></div>
-<div class="grid2"><div class="card pad"><div class="eyebrow">ORGANIZAÇÃO</div><h3 style="margin:11px 0 16px">Escolhe o teu caminho</h3><label for="planTrack" class="field">PLANO DE TREINO</label><select id="planTrack"><option value="geral">Força Geral · Ginásio</option><option value="gluteos">Pernas e Glúteos · Ginásio</option><option value="casa">Treinar em Casa</option></select><div class="sep"></div><p style="font-size:13px;color:#667766">Todos os planos usam os mesmos 21 dias. Os exercícios mudam de acordo com o percurso.</p><button id="demoCheck" class="btn outline full" style="margin-top:20px">Experimentar check-in do Dia 1</button></div>
-<div class="card pad"><div class="eyebrow">A TUA BIBLIOTECA</div><h3 style="margin:11px 0 16px">Materiais do desafio</h3><div class="resourceList"><a class="resource" href="assets/guia.pdf" target="_blank" rel="noopener"><span class="symbol">◩</span><span><b>Guia do Participante</b><small>PDF · Abrir</small></span></a><a class="resource" href="assets/treinos.pdf" target="_blank" rel="noopener"><span class="symbol">♢</span><span><b>Plano de Treino</b><small>PDF · Abrir</small></span></a><a class="resource" href="assets/checklist_compras.pdf" target="_blank" rel="noopener"><span class="symbol">☑</span><span><b>Checklist + Compras</b><small>PDF · Abrir</small></span></a><div class="resource" style="opacity:.7"><span class="symbol">▤</span><span><b>E-books de receitas</b><small>Integração pendente</small></span></div></div><div class="note">A versão final terá os materiais protegidos na conta de cada participante.</div></div></div></section>
-<section class="scene" id="screen-alimentacao">
-  <div class="sectionhead"><div><div class="eyebrow">ORIENTAÇÃO ALIMENTAR</div><h2 style="margin-top:9px">O teu plano alimentar</h2><p>Adaptado ao teu objetivo e restrições.</p></div></div>
+21DIAS DE FOCO.BY JOÃO PEDRO MENDES
+InícioO meu diaO meu plano
+🌙V3 · SERVIDOR
+21 DIAS PARA VOLTARES A TI
+O teu foco.
+Todos os dias.
 
-  <div class="card" style="margin-bottom:18px;overflow:hidden">
-    <div style="background:#1B2A21;color:#fff;padding:20px 22px">
-      <div class="row">
-        <div><div class="eyebrow" style="color:#bdff91">CALORIAS SUGERIDAS</div><h2 id="calDisplay" style="margin:6px 0 0;font-size:32px">— kcal</h2></div>
-        <div style="text-align:right"><div class="eyebrow" style="color:#bdff91">OBJETIVO</div><div id="goalDisplay" style="font-weight:800;font-size:18px;margin-top:6px">—</div></div>
-      </div>
-    </div>
-    <div style="padding:16px 22px;background:#fff">
-      <p class="tiny" style="margin:0">Restrições: <strong id="restDisplay">—</strong></p>
-      <p class="tiny" style="margin:6px 0 0">Orientação geral. Não substitui nutricionista.</p>
-    </div>
-  </div>
+Um plano claro. Treinos adaptados. Alimentação prática. Acompanhamento real. Durante 21 dias, não tens de adivinhar o que fazer a seguir.
 
-  <div class="row" style="margin-bottom:18px;gap:10px">
-    <button class="btn" id="copyPlanBtn" style="flex:1">Copiar plano</button>
-    <button class="btn light" id="chooseMealsBtn" style="flex:1">Escolher refeições</button>
-  </div>
-  <a href="assets/checklist_compras.pdf" target="_blank" rel="noopener" class="btn outline full" style="margin-bottom:16px">⬇ Descarregar lista de compras</a>
-  <div id="recipesList" style="margin-bottom:16px"></div>
+Explorar o meu dia ↗24,90 €Pagamento único
+Programa de 21 dias*
+* Condições de acesso após o desafio por definir antes do lançamento.
+João Pedro MendesPersonal trainer · LEAP-FITNESS STUDIO
+◎
+Treino do dia
 
-  <div id="mealList"></div>
-  <div class="note" id="recipesNote" style="margin-top:12px">As receitas detalhadas (e-books) serão carregadas aqui de acordo com o teu objetivo e restrições.</div>
+Ginásio, pernas/glúteos ou casa, à tua medida.
 
-<section class="scene" id="screen-admin">
-  <div class="sectionhead">
-    <div>
-      <div class="eyebrow">ADMIN</div>
-      <h2 style="margin-top:9px">Painel de administração</h2>
-      <p>Gestão de participantes e conteúdos (protótipo).</p>
-    </div>
-  </div>
-  <div class="card pad" style="margin-bottom:18px">
-    <div class="row">
-      <div>
-        <div class="eyebrow">ESTATÍSTICAS</div>
-        <h3 id="adminTotal">—</h3>
-        <p class="tiny">Utilizadores registados</p>
-      </div>
-      <div>
-        <h3 id="adminProgress">—</h3>
-        <p class="tiny">Com progresso</p>
-      </div>
-    </div>
-  </div>
-  <div class="card pad">
-    <div class="row" style="margin-bottom:14px">
-      <h3>Participantes</h3>
-      <button id="adminRefresh" class="btn light">Atualizar</button>
-    </div>
-    <div id="adminUsers" class="tiny">A carregar...</div>
-  </div>
-  <div class="card pad" style="margin-top:18px">
-    <h3>Conteúdos (estrutura)</h3>
-    <p class="tiny">Aqui serão editados: vídeos por dia, PDFs, link WhatsApp, mensagens e datas de edição.</p>
-    <div class="gap12" style="margin-top:12px;flex-wrap:wrap">
-      <button class="btn outline" disabled>Vídeos</button>
-      <button class="btn outline" disabled>PDFs</button>
-      <button class="btn outline" disabled>WhatsApp</button>
-      <button class="btn outline" disabled>Mensagens</button>
-    </div>
-  </div>
-</section>
-</section><footer class="footbar">JOÃO PEDRO MENDES · LEAP-FITNESS STUDIO · V2 (login + pagamento simulado) · Dados apenas neste dispositivo.</footer>
-<nav class="mobile-nav" aria-label="Navegação mobile"><button data-screen="inicio" class="active"><span class="em">⌂</span>Início</button><button data-screen="hoje"><span class="em">◉</span>O meu dia</button><button data-screen="plano"><span class="em">▦</span>O meu plano</button><button data-screen="alimentacao"><span class="em">🍽</span>Alimentação</button><button data-screen="admin" id="adminNav" style="display:none"><span class="em">⚙</span>Admin</button></nav>
-<div id="toast" role="status" class="toast hidden"></div><div id="modal" class="modalback hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal"><div class="eyebrow">INSCRIÇÕES</div><h3 id="modalTitle" style="margin-top:12px">Pagamento único 24,90 €</h3><p>No lançamento o acesso é ativado após confirmação do pagamento via Stripe (cartão ou MB WAY).</p><div class="gap12"><button id="modalClose" class="btn light">Fechar</button><button id="modalOk" class="btn">Continuar</button></div></div></div>
-<!-- login modal removed for now -->
-<div id="onboardModal" class="modalback" role="dialog"><div class="modal" style="max-width:480px"><div class="eyebrow">O TEU PERFIL</div><h3 style="margin-top:12px">Vamos personalizar o teu plano</h3><p class="tiny">Responde para adaptarmos treino e orientação alimentar. Dados privados.</p>
-<div id="onbStep1">
-<label class="field">GÉNERO</label>
-<div class="gap12" style="margin-bottom:16px"><button type="button" class="btn light" data-g="m">Masculino</button><button type="button" class="btn light" data-g="f">Feminino</button></div>
-<label class="field">ONDE TREINAS</label>
-<div class="gap12" style="margin-bottom:16px"><button type="button" class="btn light" data-t="casa">Em casa</button><button type="button" class="btn light" data-t="ginasio">No ginásio</button></div>
-<button class="btn full" id="onbNext1">Continuar</button>
-</div>
-<div id="onbStep2" class="hidden">
-<label class="field">IDADE</label><input id="onbAge" type="number" min="16" max="80" placeholder="ex: 28" style="width:100%;padding:12px;border-radius:10px;border:1px solid #ddd;margin-bottom:12px">
-<label class="field">ALTURA (cm)</label><input id="onbHeight" type="number" min="140" max="220" placeholder="ex: 170" style="width:100%;padding:12px;border-radius:10px;border:1px solid #ddd;margin-bottom:12px">
-<label class="field">PESO (kg)</label><input id="onbWeight" type="number" min="40" max="200" step="0.1" placeholder="ex: 72" style="width:100%;padding:12px;border-radius:10px;border:1px solid #ddd;margin-bottom:12px">
-<label class="field">OBJETIVO</label>
-<select id="onbGoal" style="width:100%;padding:12px;border-radius:10px;border:1px solid #ddd;margin-bottom:16px"><option value="perder">Perder peso</option><option value="manter">Manter</option><option value="ganhar">Ganhar massa</option></select>
-<button class="btn full" id="onbNext2">Continuar</button>
-</div>
-<div id="onbStep3" class="hidden">
-<label class="field">RESTRIÇÕES / ALERGIAS</label>
-<div style="margin:8px 0 16px"><label><input type="checkbox" value="lactose"> Intolerância à lactose</label><br><label><input type="checkbox" value="gluten"> Sem glúten</label><br><label><input type="checkbox" value="vegetariano"> Vegetariano</label><br><label><input type="checkbox" value="vegan"> Vegan</label></div>
-<p class="tiny" id="tdeeResult" style="margin-bottom:16px"></p>
-<button class="btn full" id="onbFinish">Guardar e começar</button>
-</div>
-</div></div>
-<div id="offerModal" class="modalback hidden" role="dialog"><div class="modal"><div class="eyebrow">CONTINUA</div><h3 style="margin-top:12px">Continua com o João</h3><p class="tiny">Acesso contínuo a novos treinos e conteúdos.</p><h2 style="margin:16px 0">9,90 € <small style="font-size:16px">/ mês</small></h2><ul style="text-align:left;margin:0 0 20px;padding-left:18px"><li>Novos treinos semanais</li><li>Acesso contínuo à plataforma</li><li>Atualizações de receitas</li></ul><button class="btn full" id="subBtn">Subscrever</button><button class="btn light full" style="margin-top:8px" onclick="document.getElementById('offerModal').classList.add('hidden')">Agora não</button></div></div>
-<script src="conteudos.js"></script><script src="app.js"></script></body></html>
+✓
+Marca o que cumpriste
+
+Checklist simples e evolução de 21 dias.
+
+▣
+Tudo no mesmo sítio
+
+Receitas, guias, vídeos e comunidade.
+
+UMA NOVA FORMA DE PARTICIPAR
+Menos PDFs.
+Mais ação.
+
+Abres a plataforma, vês o que tens para fazer, fazes o treino, e marcas o dia como concluído. Sem complicações.
+
+Vê a plataforma por dentroVer demonstração →
+O QUE RECEBES
+Tudo incluído, sem mensalidades
+
+Treinos estruturados · Guias · Listas de compras · Receitas · Comunidade · Check-ins · Lives
+
+Como faço a inscrição?
+Pagamento ainda não ativo. Esta é uma demonstração.
+
+A TUA EXPERIÊNCIA
+Olá. Bem-vindo de volta.
+
+O importante não é a perfeição. É continuares.
+
+0/3
+0 dias completos de 21
+SEMANA 1
+DIA 01
+Treino A
+
+Começa com controlo.
+
+Hoje
+Marca as 3 tarefas quando terminares.
+Grupo WhatsApp
+
+Dúvidas, lives e acompanhamento com o João Pedro.
+
+Entrar no grupo
+Dia de check-in. Tira 2 minutos para refletir.
+‹
+1 de 21
+›
+O TEU TREINO
+Treino A
+
+Força geral
+
+▶
+Vídeo orientado pelo João PedroEm breve.
+Em breve
+EXERCÍCIOS DA SESSÃO
+ⓘ
+Os exercícios são os do plano revisto. Os vídeos serão adicionados em breve.
+
+Fechar o dia
+
+3 passos
+Marca à medida que fazes. O teu progresso fica registado.
+
+✓ O teu progresso é privado.
+O teu percurso
+
+PERSONALIZAR
+Escolhe conforme o teu objetivo e equipamento, não conforme o sexo.
+
+PLANO DE TREINO
+O TEU PRIMEIRO NOME (OPCIONAL)
+
+Cartão do dia
+
+WHATSAPP
+É esta imagem que vais receber diariamente no grupo.
+
+Cartão do dia 1
+DICA DO JOÃO PEDRO
+Não precisas de fazer tudo perfeito.
+
+Treina com boa técnica, prepara uma refeição com antecedência e marca uma pequena vitória. É assim que a consistência começa.
+
+O TEU PERCURSO
+O meu plano
+
+Um calendário para continuares, dia após dia.
+
+0%
+O TEU PROGRESSO
+0/21 dias concluídos
+
+Reiniciar
+Seleciona qualquer dia para veres o respetivo treino. Seleciona o dia para ver o treino.
+ORGANIZAÇÃO
+Escolhe o teu caminho
+
+PLANO DE TREINO
+Todos os planos usam os mesmos 21 dias. Os exercícios mudam de acordo com o percurso.
+
+Experimentar check-in do Dia 1
+A TUA BIBLIOTECA
+Materiais do desafio
+
+◩Guia do ParticipantePDF · Abrir♢Plano de TreinoPDF · Abrir☑Checklist + ComprasPDF · Abrir
+▤E-books de receitasIntegração pendente
+A versão final terá os materiais protegidos na conta de cada participante.
+ORIENTAÇÃO ALIMENTAR
+O teu plano alimentar
+
+Adaptado ao teu objetivo e restrições.
+
+CALORIAS SUGERIDAS
+— kcal
+OBJETIVO
+—
+Restrições: —
+Orientação geral. Não substitui nutricionista.
+Copiar plano  Escolher refeições
+⬇ Descarregar lista de compras
+As receitas detalhadas (e-books) serão carregadas aqui de acordo com o teu objetivo e restrições.
+ADMIN
+Painel de administração
+
+Gestão de participantes e conteúdos (protótipo).
+
+ESTATÍSTICAS
+—
+
+Utilizadores registados
+
+—
+
+Com progresso
+
+Participantes
+
+Atualizar
+A carregar...
+Conteúdos (estrutura)
+
+Aqui serão editados: vídeos por dia, PDFs, link WhatsApp, mensagens e datas de edição.
+
+Vídeos  PDFs  WhatsApp  Mensagens
+JOÃO PEDRO MENDES · LEAP-FITNESS STUDIO · V2 (login + pagamento simulado) · Dados apenas neste dispositivo.
+⌂Início◉O meu dia▦O meu plano🍽Alimentação
+INSCRIÇÕES
+Pagamento único 24,90 €
+
+No lançamento o acesso é ativado após confirmação do pagamento via Stripe (cartão ou MB WAY).
+
+FecharContinuar
+O TEU PERFIL
+Vamos personalizar o teu plano
+
+Responde para adaptarmos treino e orientação alimentar. Dados privados.
+
+GÉNERO
+MasculinoFeminino
+ONDE TREINAS
+Em casaNo ginásio
+Continuar
+IDADEALTURA (cm)PESO (kg)OBJETIVO  Continuar
+RESTRIÇÕES / ALERGIAS
+ Intolerância à lactose
+ Sem glúten
+ Vegetariano
+ Vegan
+Guardar e começar
+CONTINUA
+Continua com o João
+
+Acesso contínuo a novos treinos e conteúdos.
+
+9,90 € / mês
+
+Novos treinos semanais
+Acesso contínuo à plataforma
+Atualizações de receitas
+SubscreverAgora não
