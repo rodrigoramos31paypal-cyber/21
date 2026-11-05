@@ -1,8 +1,9 @@
 (() => {
 'use strict';
-const c=window.FOCO_CONTENT;const KEY='foco_21_v3';let state={screen:'inicio',day:1,track:'geral',checks:{},name:'',loggedIn:false,paid:true,email:'',userId:null,profileDone:false};
+const c=window.FOCO_CONTENT;const KEY='foco_21_v3';let state={screen:'inicio',day:1,track:'geral',checks:{},name:'',loggedIn:false,paid:false,email:'',userId:null,profileDone:false};
 try{const v=localStorage.getItem(KEY);if(v){state={...state,...JSON.parse(v)}}}catch(e){}
-const $=id=>document.getElementById(id),save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
+if(state.accountOwner){window.FocoAccounts.transition(state,null,null);}
+const $=id=>document.getElementById(id),save=()=>{try{if(state.accountOwner){sessionStorage.setItem('foco_account_pending',JSON.stringify(state));localStorage.removeItem(KEY)}else{sessionStorage.removeItem('foco_account_pending');localStorage.setItem(KEY,JSON.stringify(state))}}catch(e){}};
 const encode=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
 function flash(message){$('toast').textContent=message;$('toast').classList.remove('hidden');clearTimeout(flash.timer);flash.timer=setTimeout(()=>$('toast').classList.add('hidden'),3500)}
 // API helpers
@@ -55,7 +56,7 @@ function screen(name){
 }
 const record=d=>state.checks[d]||[false,false,false];const allDone=d=>record(d).every(Boolean);const daysDone=()=>Array.from({length:21},(_,i)=>i+1).filter(allDone).length;
 function getExercises(d){const type=c.days[d-1].type;return c.exercises[state.track][type]||c.common[type]||[]}
-function renderToday(){const d=state.day,datum=c.days[d-1],week=Math.ceil(d/7),prog=record(d).filter(Boolean).length;const workout=getExercises(d),kind=datum.type;
+function renderToday(){const d=state.day,datum={...c.days[d-1],focus:window.FocoV4.textForDay(d)||c.days[d-1].focus},week=Math.ceil(d/7),prog=record(d).filter(Boolean).length;const workout=getExercises(d),kind=datum.type;
 $('myName').textContent=state.name?`, ${state.name}`:'';
 $('todayDay').textContent=String(d).padStart(2,'0');$('todayWeek').textContent='SEMANA '+week;$('todayTitle').textContent=datum.name;$('todayFocus').textContent=datum.focus;$('todayMini').textContent=`${d} de 21 · ${daysDone()} feitos`;
 $('guideTitle').textContent = 'Hoje: ' + datum.name;
@@ -68,7 +69,7 @@ $('todayProgress').style.setProperty('--p',Math.round(prog/3*100));$('todayProgr
 $('workoutTitle').textContent=datum.name;$('workoutSubtitle').textContent=(kind==='A'||kind==='B'||kind==='C')?c.trainingTracks[state.track]+' · 30–45 min':kind==='recovery'?'Recuperação leve':kind==='check'?'Reflexão e evolução':'Bloco comum · Movimento';
 $('exerciseList').innerHTML=workout.map((x,i)=>`<div class="exercise"><div class="number">${i+1}</div><div><b>${encode(x[0])}</b><small>${kind==='check'?'Objetivo de acompanhamento':'Execução em vídeo a adicionar'}</small></div><em>${encode(x[1])}</em></div>`).join('');
 $('dayImage').src=`assets/DIA_${String(d).padStart(2,'0')}.png`;$('dayImage').alt=`Cartão do dia ${d}: ${datum.name}`;
-const videourl=c.videoUrls[d]||'';const videoBtn=$('videoAction');videoBtn.textContent=videourl?'▶ Ver vídeo de hoje':'Em breve';videoBtn.disabled=false;videoBtn.onclick=()=>{if(videourl){window.open(videourl,'_blank','noopener,noreferrer')}else flash('Este vídeo será ligado depois das gravações.')};
+const videourl=window.FocoV4.videoForDay(d)||c.videoUrls[d]||'';const videoBtn=$('videoAction');videoBtn.textContent=videourl?'▶ Ver vídeo de hoje':'Em breve';videoBtn.disabled=false;videoBtn.onclick=()=>{if(videourl){window.open(videourl,'_blank','noopener,noreferrer')}else flash('Este vídeo será ligado depois das gravações.')};
 const taskNames=kind==='check'?['Fiz o check-in e a reflexão','Organizei as refeições','Defini o próximo objetivo']:['Completei o movimento de hoje','Preparei / organizei a alimentação','Cumpri o objetivo de foco'];
 $('tasks').innerHTML=taskNames.map((label,i)=>`<label class="task"><input type="checkbox" data-task="${i}" ${record(d)[i]?'checked':''}/><span>${encode(label)}</span></label>`).join('');
 $('tasks').querySelectorAll('input[data-task]').forEach(input=>input.addEventListener('change',async ()=>{const a=[...record(d)];a[+input.dataset.task]=input.checked;state.checks[d]=a;save();try{await window.FocoV4.sync()}catch(e){}renderToday();flash(a.every(Boolean)?'Dia fechado. Continuas.':'Marcado.'); if(a.every(Boolean)){ document.body.classList.add('day-complete'); setTimeout(()=>document.body.classList.remove('day-complete'),1200); } }));
@@ -101,11 +102,9 @@ $('demoCheck').onclick=()=>{state.checks[1]=[true,true,true];state.day=1;save();
 $('priceButton').onclick=openModal;$('modalClose').onclick=closeModal;$('modalOk').onclick=()=>{closeModal();flash('Pagamento ainda não ativo.');};
 window.FocoV4.init({state,save,screen,flash,encode,renderToday,renderPlan});
 // Pay
-$('subBtn') && ($('subBtn').onclick=()=>{flash('Subscrição simulada. Em produção liga ao Stripe.');$('offerModal').classList.add('hidden');});
+$('subBtn') && ($('subBtn').onclick=()=>{$('accountButton').click();$('offerModal').classList.add('hidden');});
   const adminRefresh=$('adminRefresh');if(adminRefresh)adminRefresh.onclick=loadAdmin;
-  // Acesso admin: ?admin=1 ou long-press no logo
-  if(location.search.includes('admin=1')) showAdmin();
-  document.querySelector('.logomark').oncontextmenu=e=>{e.preventDefault();showAdmin();};
+
 }
 
 // Theme

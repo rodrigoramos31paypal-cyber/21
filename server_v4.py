@@ -5,38 +5,65 @@ from pathlib import Path
 from functools import wraps
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
-from collections import defaultdict, deque
-import sqlite3, os, json, secrets, re, time
+import os, json, secrets, re, time, hashlib
+from datetime import timedelta
+from database import create_database, Connection, migrate, IntegrityError
+from materials import deliver_material
 ROOT = Path(__file__).resolve().parent
 app = Flask(__name__, static_folder=None)
 app.config.update(SECRET_KEY=os.environ.get('SECRET_KEY') or secrets.token_hex(32), SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.environ.get('COOKIE_SECURE') == '1', MAX_CONTENT_LENGTH=128 * 1024)
-DB = os.environ.get('FOCO_DB', str(ROOT / 'instance' / 'foco.db'))
-Path(DB).parent.mkdir(parents=True, exist_ok=True)
+engine = create_database(ROOT)
 MEALS = {'pequeno', 'almoco', 'lanche', 'jantar'}
 ALLERGIES = {'leite', 'gluten', 'ovos', 'amendoim', 'frutos-casca', 'soja', 'sesamo', 'aipo', 'peixe', 'crustaceos', 'moluscos', 'mostarda', 'tremoco', 'sulfitos'}
 RECIPES = {r['id']: r for r in json.loads((ROOT / 'receitas.js').read_text().removeprefix('window.FOCO_RECIPES = ').strip().removesuffix(';'))}
-attempts = defaultdict(deque)
 
 def get_db():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA foreign_keys=ON')
-    return conn
+    return Connection(engine)
 
 def init_db():
+    migrate(engine)
+
+# Em produção executar manage.py migrate antes do deployment.
+if not (os.environ.get('VERCEL') or os.environ.get('FOCO_ENV') == 'production'):
+    init_db()
+
+production = bool(os.environ.get('VERCEL') or os.environ.get('FOCO_ENV') == 'production')
+if production and len(os.environ.get('SECRET_KEY', '')) < 32:
+    raise RuntimeError('SECRET_KEY estável com pelo menos 32 caracteres é obrigatória.')
+app.config.update(SESSION_COOKIE_SECURE=production or os.environ.get('COOKIE_SECURE') == '1',
+                  PERMANENT_SESSION_LIFETIME=timedelta(days=7))
+
+def digest(value):
+    return hashlib.sha256(value.encode()).hexdigest()
+
+def new_session(uid):
+    session.clear()
+    token = secrets.token_urlsafe(32)
+    session.update(user_id=uid, token=token)
+    session.permanent = True
     with get_db() as conn:
-        conn.execute("CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT,email TEXT UNIQUE NOT NULL,password TEXT NOT NULL,name TEXT,track TEXT DEFAULT 'geral',gender TEXT,age INTEGER,height REAL,weight REAL,goal TEXT,restrictions TEXT,calories INTEGER,created_at TEXT)")
-        conn.execute('CREATE TABLE IF NOT EXISTS progress(user_id INTEGER,day INTEGER,checks TEXT,PRIMARY KEY(user_id,day),FOREIGN KEY(user_id) REFERENCES users(id))')
-        conn.execute('CREATE TABLE IF NOT EXISTS account_state(user_id INTEGER PRIMARY KEY REFERENCES users(id),data TEXT NOT NULL,updated_at TEXT NOT NULL)')
-init_db()
+        conn.execute('DELETE FROM auth_sessions WHERE expires<?', (int(time.time()),))
+        conn.execute('INSERT INTO auth_sessions(token,user_id,expires) VALUES(?,?,?)',
+                     (digest(token), uid, int(time.time()) + 7 * 86400))
+
+def session_user_id():
+    token = session.get('token')
+    if not token:
+        return None
+    with get_db() as conn:
+        row = conn.execute('SELECT user_id FROM auth_sessions WHERE token=? AND expires>?',
+                           (digest(token), int(time.time()))).fetchone()
+    return row['user_id'] if row else None
 
 @app.before_request
 def protect_api():
+    if request.path == '/api/stripe/webhook':
+        return None
     if request.path.startswith('/api/') and request.method in {'POST', 'PUT', 'DELETE'}:
         if not request.is_json:
             return (jsonify(error='É necessário enviar dados JSON.'), 415)
         origin = request.headers.get('Origin')
-        if origin and urlsplit(origin).netloc != request.host or request.headers.get('Sec-Fetch-Site') == 'cross-site':
+        if (origin and origin.rstrip('/') != request.host_url.rstrip('/')) or request.headers.get('Sec-Fetch-Site') == 'cross-site':
             return (jsonify(error='Origem não autorizada.'), 403)
 
 @app.after_request
@@ -52,25 +79,31 @@ def authenticated(fn):
 
     @wraps(fn)
     def wrapped(*args, **kwargs):
-        if not session.get('user_id'):
+        if not session_user_id():
             return (jsonify(error='Inicia sessão para aceder à tua conta.'), 401)
         return fn(*args, **kwargs)
     return wrapped
 
 def current_user():
     with get_db() as conn:
-        row = conn.execute('SELECT id,email,name,track FROM users WHERE id=?', (session.get('user_id'),)).fetchone()
-    return dict(row) if row else None
+        row = conn.execute('SELECT id,email,name,track FROM users WHERE id=?', (session_user_id(),)).fetchone()
+    if not row:
+        return None
+    user = dict(row)
+    with get_db() as conn:
+        user['is_admin'] = bool(conn.execute('SELECT user_id FROM administrators WHERE user_id=?', (user['id'],)).fetchone())
+        user['has_access'] = user['is_admin'] or bool(conn.execute('SELECT user_id FROM access_grants WHERE user_id=?', (user['id'],)).fetchone())
+        user['email_verified'] = bool(conn.execute('SELECT user_id FROM verified_emails WHERE user_id=?', (user['id'],)).fetchone())
+    return user
 
 def rate_limit():
-    q = attempts[request.remote_addr or 'local']
-    now = time.monotonic()
-    while q and q[0] < now - 60:
-        q.popleft()
-    if len(q) >= 20:
-        return True
-    q.append(now)
-    return False
+    # Contador atómico na base de dados, partilhado por todas as funções.
+    bucket = digest(request.remote_addr or 'local')
+    window = int(time.time()) // 60
+    with get_db() as conn:
+        conn.execute('DELETE FROM auth_limits WHERE "window"<?', (window - 1,))
+        row = conn.execute('INSERT INTO auth_limits(bucket,"window",hits) VALUES(?,?,1) ON CONFLICT(bucket) DO UPDATE SET hits=CASE WHEN auth_limits."window"=excluded."window" THEN auth_limits.hits+1 ELSE 1 END,"window"=excluded."window" RETURNING hits', (bucket, window)).fetchone()
+    return row['hits'] > 20
 
 def credentials(registering=False):
     data = request.get_json(silent=True)
@@ -100,14 +133,13 @@ def register():
         if not isinstance(name, str) or len(name) > 60:
             raise ValueError('Nome inválido.')
         with get_db() as conn:
-            cur = conn.execute('INSERT INTO users(email,password,name,created_at) VALUES(?,?,?,?)', (email, generate_password_hash(password), name, datetime.now(timezone.utc).isoformat()))
-            uid = cur.lastrowid
-        session.clear()
-        session['user_id'] = uid
+            cur = conn.execute('INSERT INTO users(email,password,name,created_at) VALUES(?,?,?,?) RETURNING id', (email, generate_password_hash(password), name, datetime.now(timezone.utc).isoformat()))
+            uid = cur.fetchone()['id']
+        new_session(uid)
         return (jsonify(ok=True, user=current_user()), 201)
     except ValueError as error:
         return (jsonify(error=str(error)), 400)
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         return (jsonify(error='Este email já está registado.'), 409)
 
 @app.route('/api/login', methods=['POST'])
@@ -122,12 +154,13 @@ def login():
         user = conn.execute('SELECT * FROM users WHERE email=?', (email,)).fetchone()
     if not user or not check_password_hash(user['password'], password):
         return (jsonify(error='Credenciais inválidas.'), 401)
-    session.clear()
-    session['user_id'] = user['id']
+    new_session(user['id'])
     return jsonify(ok=True, user=current_user())
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
+    with get_db() as conn:
+        conn.execute('DELETE FROM auth_sessions WHERE token=?', (digest(session.get('token', '')),))
     session.clear()
     return jsonify(ok=True)
 
@@ -195,11 +228,14 @@ def account_state():
             row = conn.execute('SELECT data FROM account_state WHERE user_id=?', (uid,)).fetchone()
         return jsonify(state=json.loads(row['data']) if row else None)
     try:
-        data = validate_state(request.get_json(silent=True))
+        incoming = request.get_json(silent=True)
+        if isinstance(incoming, dict) and incoming.get('accountId', uid) != uid:
+            return (jsonify(error='A conta mudou. Volta a carregar a página.'), 409)
+        data = validate_state(incoming)
     except (ValueError, TypeError, KeyError) as error:
         return (jsonify(error=str(error)), 400)
     with get_db() as conn:
-        conn.execute('INSERT OR REPLACE INTO account_state(user_id,data,updated_at) VALUES(?,?,?)', (uid, json.dumps(data), datetime.now(timezone.utc).isoformat()))
+        conn.execute('INSERT INTO account_state(user_id,data,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at', (uid, json.dumps(data), datetime.now(timezone.utc).isoformat()))
         conn.execute('UPDATE users SET name=?,track=? WHERE id=?', (data['name'], data['track'], uid))
     return jsonify(ok=True)
 
@@ -226,14 +262,14 @@ def progress():
             day, checks = (data.get('day'), data.get('checks'))
             if type(day) is not int or not 1 <= day <= 21 or (not isinstance(checks, list)) or (len(checks) != 3) or any((type(x) is not bool for x in checks)):
                 return (jsonify(error='Progresso inválido.'), 400)
-            conn.execute('INSERT OR REPLACE INTO progress(user_id,day,checks) VALUES(?,?,?)', (session['user_id'], day, json.dumps(checks)))
+            conn.execute('INSERT INTO progress(user_id,day,checks) VALUES(?,?,?) ON CONFLICT(user_id,day) DO UPDATE SET checks=excluded.checks', (session['user_id'], day, json.dumps(checks)))
             return jsonify(ok=True)
         rows = conn.execute('SELECT day,checks FROM progress WHERE user_id=?', (session['user_id'],)).fetchall()
     return jsonify(checks={str(r['day']): json.loads(r['checks']) for r in rows})
 
 def is_admin():
     user = current_user()
-    return user and bool(os.environ.get('FOCO_ADMIN_EMAIL')) and (user['email'] == os.environ['FOCO_ADMIN_EMAIL'].strip().lower())
+    return bool(user and user['is_admin'])
 
 @app.route('/api/admin/users')
 @authenticated
@@ -250,8 +286,8 @@ def admin_stats():
     if not is_admin():
         return (jsonify(error='Acesso reservado à administração.'), 403)
     with get_db() as conn:
-        total = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-        progress = conn.execute('SELECT COUNT(*) FROM account_state').fetchone()[0]
+        total = conn.execute('SELECT COUNT(*) AS n FROM users').fetchone()['n']
+        progress = conn.execute('SELECT COUNT(*) AS n FROM account_state').fetchone()['n']
     return jsonify(total_users=total, users_with_progress=progress)
 
 @app.route('/')
@@ -260,6 +296,18 @@ def index():
 
 @app.route('/<path:path>')
 def static_files(path):
-    if path in {'index.html', 'estilos.css', 'app.js', 'conteudos.js', 'v4.js', 'alimentacao.js', 'receitas.js', 'manifest.webmanifest'} or path.startswith('assets/'):
+    if path.lower().endswith('.pdf'):
+        if path not in {'assets/guia.pdf', 'assets/treinos.pdf', 'assets/checklist_compras.pdf'}:
+            return ('Não encontrado', 404)
+        user = current_user()
+        if not user:
+            return (jsonify(error='Inicia sessão para abrir este material.'), 401)
+        if not user['has_access']:
+            return (jsonify(error='Este material requer acesso ao desafio.'), 403)
+        return deliver_material(ROOT, Path(path).name, production)
+    if path in {'index.html', 'estilos.css', 'app.js', 'conteudos.js', 'v4.js', 'account-state.js', 'alimentacao.js', 'receitas.js', 'manifest.webmanifest'} or path.startswith('assets/'):
         return send_from_directory(ROOT, path)
     return ('Não encontrado', 404)
+
+from production_features import install_features
+install_features(app, get_db, authenticated, current_user, is_admin, rate_limit, digest, RECIPES)

@@ -1,18 +1,20 @@
-# 21 Dias de Foco — V4 para revisão
+# 21 Dias de Foco — V4, preparação de produção
 
-Esta versão altera a aplicação existente do Rodrigo. Não é um protótipo HTML separado. Está preparada na branch local `codex/v4-onboarding-alimentacao`, a partir de `68cc0f5ec43c125dc61ce9a190c9db9b36141a24`. Não foi enviada para o GitHub, integrada na main ou publicada.
+Continuação da aplicação existente, a partir da main `82599129ab59c63e531a7a0accceff7405d6a4ac`. Branch de revisão: `codex/producao-segura`. Nenhuma autorização de merge ou publicação em produção foi concedida nesta tarefa.
 
-## Alterações
+## Alterações desta revisão
 
-- Recuperação do HTML e das regras de apresentação do commit original `eecc842`, conservando a arquitetura e os materiais. O HTML da main recebida estava reduzido a texto simples.
-- Correção da inicialização interrompida por referências ao login removido, da função de mensagens em falta, do escape HTML e da estrutura das secções.
-- Questionário em três passos: nome; dados físicos opcionais; objetivo; local, experiência e disponibilidade; preferências, alergias, outras restrições e refeições. Edição posterior disponível.
-- Hoje com imagem, descrição, ingredientes, preparação, indicação da dose, valores indicativos, marcação persistente e troca de receita.
-- Plano de 21 dias, em três semanas de sete dias, com repetição no dia seguinte ou noutra semana. Repetir substitui as escolhas do destino mediante confirmação.
-- Biblioteca inicial limitada a **10 receitas** dos dois e-books, com filtros. Não representa a transcrição integral dos livros.
-- Compras calculadas a partir das receitas da semana escolhida, com soma de quantidades, intervalos preservados, checklist persistente e exportação TXT. PDF original continua disponível.
-- Contas no backend Flask/SQLite existente: palavra-passe com hash, cookie de sessão, perfil/plano/progresso por participante, validação no servidor e proteção das rotas de administração.
-- Mantidos os três percursos de treino, calendário, cartões, PDFs, ligação WhatsApp e tema escuro.
+- Mantidos o design, os três percursos, calendário, cartões, tema, questionário em três passos, 10 receitas originais com imagens dos livros, plano de 21 dias, trocas/repetições, compras e checklists.
+- Camada de persistência comum a SQLite local e PostgreSQL. Em Vercel/produção a aplicação recusa SQLite e uma chave de sessão ausente ou curta.
+- Sessões de sete dias registadas por token com hash na base de dados, revogadas ao sair ou recuperar a palavra-passe. Cookies HttpOnly, SameSite=Lax e Secure em produção.
+- Limite de tentativas partilhado na base de dados, validação de origem e dados no servidor. Perfil, plano e progresso ligados à sessão, com rejeição de gravações vindas de uma conta antiga noutro separador.
+- Dados de contas deixam de ficar no armazenamento permanente do navegador. Alterações pendentes ficam no separador e só são reenviadas depois de confirmar a mesma conta. Importação de um perfil de visitante requer confirmação explícita.
+- PDF exige sessão e acesso atribuído pelo servidor. Ficheiros retirados da árvore pública nesta branch; cópias locais em `private_materials/`, excluídas do Git/deployment. Produção usa bucket S3 privado e ligações de 60 segundos. As versões antigas do repositório público continuam a conter os PDFs: esta revisão não reescreve o histórico.
+- Administradores atribuídos por operação explícita (`manage.py admin`), sem promoção automática por registar um endereço de email.
+- Na conta de administrador: editar descrições/notas do dia e associar/remover vídeos HTTPS confirmados para receitas e 21 dias. Ingredientes, doses e fontes editoriais não são alterados por este editor.
+- Verificação de email e recuperação de palavra-passe com tokens de uso único, válidos 30 minutos. Entrega dependente de SMTP.
+- Checkout de teste: pagamento único de 2490 cêntimos/EUR, imposto pelo servidor. Chaves e eventos live recusados. Acesso só após webhook com assinatura, valor, moeda e conta verificados; eventos repetidos são idempotentes. Nunca se concede acesso pelo regresso à página de sucesso.
+- Entrada Vercel `api/index.py` e configuração que encaminha todos os pedidos pelo Flask, incluindo os PDFs. O 404 de `/api/session` foi confirmado na versão pública anterior; a correção de routing ainda precisa de validação no alojamento.
 
 ## Conteúdos e limites editoriais
 
@@ -24,47 +26,23 @@ As páginas selecionadas não forneceram ligações de vídeo correspondentes ve
 
 As restrições usam metadados conservadores dos ingredientes, incluindo potenciais componentes de opções do original. Confirmar sempre marcas, rótulos e contaminação cruzada. Há combinações sem receita nesta seleção (por exemplo, pequeno-almoço vegan); o ecrã apresenta essa lacuna, sem inventar receitas. Outras restrições em texto livre suspendem as sugestões automáticas até revisão.
 
-## Executar localmente
+## Executar e testar
 
-Requer Python 3.10 ou posterior:
+Python 3.12 e Node 22:
 
 ```sh
 python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip install -r requirements.txt pytest
 .venv/bin/python server.py
-```
-
-Abrir http://127.0.0.1:8080. Sem conta, o perfil e o progresso ficam no navegador. Para testar a sincronização, criar uma conta local em «A minha conta»; não usar credenciais reais nos testes.
-
-O SQLite é criado em `instance/foco.db`, excluído do Git e dos pacotes. O servidor serve apenas os ficheiros da aplicação e assets, sem expor código Python ou base de dados. Uma base de dados antiga pode ser ligada por `FOCO_DB`, após cópia de segurança; as tabelas originais são conservadas e a tabela `account_state` é acrescentada.
-
-## Antes de ligar contas ao alojamento Vercel
-
-O alojamento estático atual não executa, por si só, este servidor Flask. **As contas da V4 foram testadas localmente; não estão ativas no site público.**
-
-Rodrigo deve ligar `/api/*` ao backend, definir `SECRET_KEY` estável e `COOKIE_SECURE=1` em HTTPS e usar base de dados persistente. Não usar SQLite em armazenamento efémero de funções serverless. Para PostgreSQL será necessário adaptar a camada de persistência, mantendo os contratos desta API.
-
-Configurar o administrador com `FOCO_ADMIN_EMAIL`. Sem essa variável, nenhuma conta recebe acesso de administrador. Antes do uso comercial, continuam pendentes a integração de pagamento, recuperação/verificação de email, monitorização, proteção distribuída contra abuso, consentimentos/privacidade, backups e proteção dos materiais pagos. Não apresentar as contas como um sistema comercial concluído.
-
-## Verificação
-
-```sh
-.venv/bin/python -m pip install pytest
-.venv/bin/python -m pytest tests/test_accounts.py -q
+.venv/bin/python -m pytest tests -q
 node tests/food.test.cjs
+node tests/accounts.test.cjs
 node --check app.js
 node --check v4.js
 ```
 
-Os testes cobrem isolamento entre contas, sessão obrigatória, acesso a ficheiros privados, autenticação, gravação/releitura, tentativas de introduzir receitas incompatíveis e quantidades de compras após uma troca.
+Abrir http://127.0.0.1:8080. Para os PDFs locais, conservar os três originais em `private_materials/`. Sem esse diretório, os testes continuam a usar um PDF sintético em diretório temporário; não dependem dos materiais reais.
 
-No navegador: questionário sem dados físicos, navegação, exercícios dos percursos casa/ginásio/glúteos, marcação de tarefa, troca de receita, ingredientes/preparação, persistência após recarregar, sete dias por semana, dia 21, repetição no dia seguinte, filtro vegan e download de compras. Layout verificado a 390 × 844 e 1440 × 1000. Não equivale a um teste num iPhone físico/Safari.
+A suite pode usar PostgreSQL através de `TEST_DATABASE_URL` numa base **descartável**. Cada teste cria e remove um esquema próprio. O workflow em `.github/workflows/tests.yml` prepara SQLite e PostgreSQL 16. A existência do workflow não significa que já foi executado no GitHub; consultar os resultados do PR.
 
-## Integrar sem tocar na main
-
-1. Guardar qualquer trabalho em curso do Rodrigo e obter o estado mais recente do repositório.
-2. Criar uma branch a partir da main atual. Aplicar o patch V4 ou rever o commit fornecido; resolver diferenças caso a main tenha avançado.
-3. Executar os testes e testar a pré-visualização. A exportação ZIP inclui os ficheiros, assets e testes; não inclui contas, credenciais nem bases de dados.
-4. Rever receitas, imagens e valores com o João Pedro. Acrescentar os links de vídeo confirmados e completar a seleção, se necessário.
-5. Corrigir o acesso de escrita da integração GitHub e investigar o estado Vercel `Deployment was blocked` do commit base. Não assumir que a main atual corresponde à versão pública.
-6. Abrir um pedido de revisão para o João Pedro. **Não fazer merge nem publicar em produção sem autorização.**
+Consultar `CONFIGURACAO_PRODUCAO.md` antes de configurar o preview. As credenciais não fazem parte desta entrega.

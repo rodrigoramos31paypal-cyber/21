@@ -1,0 +1,16 @@
+const {readFileSync}=require('node:fs');
+const vm=require('node:vm');
+const assert=require('node:assert/strict');
+const sandbox={window:{}};
+vm.runInNewContext(readFileSync(require('node:path').join(__dirname,'../account-state.js'),'utf8'),sandbox);
+const {transition}=sandbox.window.FocoAccounts;
+let state={accountOwner:1,profileV4:{name:'Conta A'},foodPlan:[{segredo:'A'}],checks:{1:[true,true,true]},email:'a@example.test'};
+transition(state,2,null,true);
+assert.equal(state.profileV4,null);assert.equal(state.foodPlan,null);assert.equal(state.name,'');assert.equal(state.email,'');
+assert.equal(state.accountOwner,2);assert.equal(Object.keys(state.checks).length,0);
+state={profileV4:{name:'Visitante'},checks:{1:[true,false,false]}};
+transition(state,3,null,false);assert.equal(state.profileV4,null);
+state={profileV4:{name:'Visitante'}};transition(state,3,null,true);assert.equal(state.profileV4.name,'Visitante');
+transition(state,4,{profileV4:{name:'Conta D'},checks:{}});assert.equal(state.profileV4.name,'Conta D');
+transition(state,null,null);assert.equal(state.profileV4,null);assert.equal(state.loggedIn,false);
+console.log('Isolamento no navegador, importação explícita e limpeza ao sair: OK');

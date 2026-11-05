@@ -1,3 +1,10 @@
-server.py
-foco.db
-*.txt
+instance/
+*.db
+.env*
+tests/
+__pycache__/
+.pytest_cache/
+.venv/
+.git/
+output/
+private_materials/
