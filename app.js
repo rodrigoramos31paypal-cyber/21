@@ -113,11 +113,14 @@ $('todayProgress').style.setProperty('--p',Math.round(prog/3*100));$('todayProgr
 $('workoutTitle').textContent=datum.name;$('workoutSubtitle').textContent=(kind==='A'||kind==='B'||kind==='C')?c.trainingTracks[state.track]+' · 30–45 min':kind==='recovery'?'Recuperação leve':kind==='check'?'Reflexão e evolução':'Bloco comum · Movimento';
 $('exerciseList').innerHTML=workout.map((x,i)=>`<div class="exercise"><div class="number">${i+1}</div><div><b>${encode(x[0])}</b><small>${kind==='check'?'Objetivo de acompanhamento':'Execução em vídeo a adicionar'}</small></div><em>${encode(x[1])}</em></div>`).join('');
 $('dayImage').src=`assets/DIA_${String(d).padStart(2,'0')}.png`;$('dayImage').alt=`Cartão do dia ${d}: ${datum.name}`;
-const videourl=c.videoUrls[d]||'';const videoBtn=$('videoAction');videoBtn.textContent=videourl?'▶ Ver vídeo de hoje':'Vídeo a adicionar';videoBtn.disabled=false;videoBtn.onclick=()=>{if(videourl){window.open(videourl,'_blank','noopener,noreferrer')}else flash('Este vídeo será ligado depois das gravações.')};
+const videourl=c.videoUrls[d]||'';const videoBtn=$('videoAction');videoBtn.textContent=videourl?'▶ Ver vídeo de hoje':'Em breve';videoBtn.disabled=false;videoBtn.onclick=()=>{if(videourl){window.open(videourl,'_blank','noopener,noreferrer')}else flash('Este vídeo será ligado depois das gravações.')};
 const taskNames=kind==='check'?['Fiz o check-in e a reflexão','Organizei as refeições','Defini o próximo objetivo']:['Completei o movimento de hoje','Preparei / organizei a alimentação','Cumpri o objetivo de foco'];
 $('tasks').innerHTML=taskNames.map((label,i)=>`<label class="task"><input type="checkbox" data-task="${i}" ${record(d)[i]?'checked':''}/><span>${encode(label)}</span></label>`).join('');
-$('tasks').querySelectorAll('input[data-task]').forEach(input=>input.addEventListener('change',async ()=>{const a=[...record(d)];a[+input.dataset.task]=input.checked;state.checks[d]=a;save();await saveProgress(d);renderToday();flash(a.every(Boolean)?'Dia concluído. Excelente trabalho!':'Progresso guardado.') }));
+$('tasks').querySelectorAll('input[data-task]').forEach(input=>input.addEventListener('change',async ()=>{const a=[...record(d)];a[+input.dataset.task]=input.checked;state.checks[d]=a;save();await saveProgress(d);renderToday();flash(a.every(Boolean)?'Dia fechado. Continuas.':'Marcado.'); if(a.every(Boolean)){ document.body.classList.add('day-complete'); setTimeout(()=>document.body.classList.remove('day-complete'),1200); } }));
 $('trackSelect').value=state.track;
+const checkDays = [7,14,21];
+const banner = document.getElementById('checkinBanner');
+if(banner) banner.classList.toggle('hidden', !checkDays.includes(d));
 if(d===21 && !state.offerShown){ setTimeout(()=>{ $('offerModal').classList.remove('hidden'); state.offerShown=true; save(); }, 800); }
 }
 function renderPlan(){const done=daysDone();$('planComplete').textContent=`${done}/21 dias concluídos`;$('planPercent').textContent=Math.round(done/21*100)+'%';$('planTrack').value=state.track;
@@ -148,7 +151,7 @@ $('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
 $('prevDay').onclick=()=>{state.day=Math.max(1,state.day-1);save();renderToday()};$('nextDay').onclick=()=>{state.day=Math.min(21,state.day+1);save();renderToday()};
 $('trackSelect').onchange=e=>setTrack(e.target.value);$('planTrack').onchange=e=>setTrack(e.target.value);
 $('nameInput').value=state.name;$('nameInput').addEventListener('input',e=>{state.name=e.target.value.trim().slice(0,28);save();$('myName').textContent=state.name?`, ${state.name}`:''});
-$('restart').onclick=()=>{if(confirm('Reiniciar os check-ins locais desta demonstração?')){state.checks={};state.day=1;save();renderPlan();flash('Demonstração reiniciada.')}};
+$('restart').onclick=()=>{if(confirm('Reiniciar o teu progresso?')){state.checks={};state.day=1;save();renderPlan();flash('Progresso reiniciado.')}};
 $('demoCheck').onclick=()=>{state.checks[1]=[true,true,true];state.day=1;save();renderToday();flash('Exemplo: Dia 1 marcado como concluído.')};
 // Onboarding
 document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{onb.gender=b.dataset.g;document.querySelectorAll('[data-g]').forEach(x=>x.classList.remove('active'));b.classList.add('active')});
@@ -173,7 +176,7 @@ $('onbFinish').onclick=()=>{
   state.profileDone=true;
   save();
   closeOnboard();
-  flash('Perfil guardado.');
+  flash('Pronto. O teu plano está adaptado.');
   screen('hoje');
 };
 async function doLogin(){
@@ -221,7 +224,7 @@ function initTheme(){
 window.addEventListener('DOMContentLoaded',()=>{
   wire();
   initTheme();
-  openOnboard();
-  screen('inicio');
+  if(!state.profileDone) openOnboard();
+  screen(state.profileDone ? 'hoje' : 'inicio');
 });
 })();
